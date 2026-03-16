@@ -56,7 +56,7 @@ def _initialize_components():
     _sql_generator = SQLGenerator(llm, _schema_loader)
     _safety_checker = SafetyChecker()
     _query_executor = QueryExecutor(AGENT_DATABASE_URL)
-    _viz_recommender = VizRecommender(llm)
+    _viz_recommender = VizRecommender()
     _insight_narrator = InsightNarrator(llm)
     
     logger.info("graph_components_initialized")
@@ -468,21 +468,26 @@ async def recommend_viz(state: QueryMindState) -> Dict[str, Any]:
     
     try:
         # Get visualization recommendation
-        chart_type, chart_config = _viz_recommender.recommend(
+        sample_row = state.query_results[0] if state.query_results else {}
+        column_types = {
+            col: _infer_column_type(state.query_results, col)
+            for col in sample_row.keys()
+        }
+        viz_config = _viz_recommender.recommend(
+            sql=state.generated_sql or "",
             results=state.query_results,
-            query=state.generated_sql or "",
-            explanation=state.sql_explanation or ""
+            column_types=column_types,
         )
         
         logger.info(
             "viz_recommended",
-            chart_type=chart_type,
+            chart_type=viz_config.chart_type,
             num_results=len(state.query_results)
         )
         
         return {
-            "chart_type": chart_type,
-            "chart_config": chart_config,
+            "chart_type": viz_config.chart_type,
+            "chart_config": viz_config.to_dict(),
             "status": "narrating"
         }
     
@@ -493,6 +498,31 @@ async def recommend_viz(state: QueryMindState) -> Dict[str, Any]:
             "chart_config": {"display": "table"},
             "status": "narrating"
         }
+
+
+def _infer_column_type(results: list[dict], column: str) -> str:
+    """Infer coarse type for a result column: numeric, date, or categorical."""
+    values = [row.get(column) for row in results[:10] if row.get(column) is not None]
+    if not values:
+        return "categorical"
+
+    # Numeric check
+    numeric_hits = 0
+    for value in values:
+        try:
+            float(value)
+            numeric_hits += 1
+        except (TypeError, ValueError):
+            pass
+    if numeric_hits >= max(1, int(0.8 * len(values))):
+        return "numeric"
+
+    # Date-ish check
+    date_tokens = ["-", "/", "T", ":"]
+    if all(isinstance(v, str) and any(t in v for t in date_tokens) for v in values):
+        return "date"
+
+    return "categorical"
 
 
 # ============================================================================

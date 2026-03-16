@@ -131,7 +131,7 @@ class QueryMindState(BaseModel):
     # ========================================================================
     
     chart_type: Literal[
-        "bar", "line", "pie", "table", "scatter", "area", "none"
+        "bar", "line", "pie", "table", "scatter", "area", "none", "metric_card"
     ] = Field(
         default="table",
         description="Recommended chart type for visualization"
