@@ -107,7 +107,10 @@ cp .env.example .env
 3. Update `.env` with your actual values:
 
 ```env
-DATABASE_URL=postgresql://user:password@localhost:5432/querymind
+AGENT_DATABASE_URL=postgresql://querymind_readonly:querymind_readonly_password@localhost:5432/querymind
+APP_DATABASE_URL=postgresql://querymind_app:querymind_app_password@localhost:5432/querymind
+# Backward-compatible alias
+DATABASE_URL=postgresql://querymind_app:querymind_app_password@localhost:5432/querymind
 ANTHROPIC_API_KEY=your-anthropic-key
 REDIS_URL=redis://localhost:6379
 ```
@@ -182,7 +185,9 @@ npm run dev
 All configuration is managed through environment variables in `.env`. See `.env.example` for available options.
 
 Key settings:
-- `DATABASE_URL`: PostgreSQL connection (read-only user)
+- `AGENT_DATABASE_URL`: PostgreSQL connection used for agent SQL execution (read-only user)
+- `APP_DATABASE_URL`: Separate PostgreSQL connection for non-agent application concerns
+- `DATABASE_URL`: Backward-compatible alias to `AGENT_DATABASE_URL`
 - `ANTHROPIC_API_KEY`: Claude API key
 - `REDIS_URL`: Redis connection for conversation state
 - `LOG_LEVEL`: structlog level (INFO, DEBUG, etc.)
@@ -190,6 +195,7 @@ Key settings:
 ## Safety & Security
 
 - **Read-only database user**: All queries execute against a PostgreSQL user with SELECT-only permissions
+- **Role separation**: Distinct DB users for admin/bootstrap, app operations, and agent read-only execution
 - **SQL validation**: Generated queries validated through SafetyChecker before execution
 - **Input sanitization**: User inputs sanitized to prevent SQL injection
 - **No data modification**: Agent explicitly prevented from generating INSERT/UPDATE/DELETE queries

@@ -11,7 +11,7 @@ Each node:
 """
 
 import structlog
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any
 
 from agent.graph.state import QueryMindState
 from agent.core.schema_loader import SchemaLoader
@@ -20,7 +20,7 @@ from agent.core.safety_checker import SafetyChecker
 from agent.core.query_executor import QueryExecutor
 from agent.core.viz_recommender import VizRecommender
 from agent.core.insight_narrator import InsightNarrator
-from agent.config import DATABASE_URL, ANTHROPIC_API_KEY, LLM_MODEL, SQL_CONFIDENCE_THRESHOLD
+from agent.config import AGENT_DATABASE_URL, ANTHROPIC_API_KEY, LLM_MODEL
 
 from langchain_anthropic import ChatAnthropic
 
@@ -52,10 +52,10 @@ def _initialize_components():
     )
     
     # Initialize components
-    _schema_loader = SchemaLoader(DATABASE_URL)
+    _schema_loader = SchemaLoader(AGENT_DATABASE_URL)
     _sql_generator = SQLGenerator(llm, _schema_loader)
     _safety_checker = SafetyChecker()
-    _query_executor = QueryExecutor(DATABASE_URL)
+    _query_executor = QueryExecutor(AGENT_DATABASE_URL)
     _viz_recommender = VizRecommender(llm)
     _insight_narrator = InsightNarrator(llm)
     
@@ -226,23 +226,30 @@ async def check_safety(state: QueryMindState) -> Dict[str, Any]:
         }
     
     try:
+        schema_dict = _schema_loader.get_schema_dict()
+
         # Run safety check
-        is_safe, reason = _safety_checker.check(state.generated_sql)
+        safety_result = _safety_checker.check(state.generated_sql, schema=schema_dict)
         
-        logger.info("safety_check_completed", is_safe=is_safe, reason=reason)
+        logger.info(
+            "safety_check_completed",
+            is_safe=safety_result.passed,
+            reason=safety_result.reason,
+        )
         
-        if not is_safe:
+        if not safety_result.passed:
             return {
                 "safety_check_passed": False,
-                "safety_check_reason": reason,
+                "safety_check_reason": safety_result.reason,
                 "status": "error",
-                "execution_error": f"Safety check failed: {reason}"
+                "execution_error": f"Safety check failed: {safety_result.reason}"
             }
         
         # Safety check passed - proceed to execution
         return {
             "safety_check_passed": True,
-            "safety_check_reason": "Query passed all safety checks",
+            "safety_check_reason": safety_result.reason,
+            "generated_sql": safety_result.sanitized_sql,
             "status": "executing"
         }
     

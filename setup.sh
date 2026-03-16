@@ -113,7 +113,7 @@ else
     # Retry loop for database connection
     RETRIES=30
     while [ $RETRIES -gt 0 ]; do
-        if PGPASSWORD=querymind_password psql -h localhost -U querymind_user -d querymind -c "SELECT 1" &> /dev/null; then
+        if PGPASSWORD=querymind_admin_password psql -h localhost -U querymind_admin -d querymind -c "SELECT 1" &> /dev/null; then
             print_success "PostgreSQL is ready"
             break
         fi
@@ -131,10 +131,10 @@ echo ""
 # Run seed scripts
 print_step "Running database seed scripts..."
 
-PGPASSWORD=querymind_password psql -h localhost -U querymind_user -d querymind < "$SCRIPT_DIR/data/seed_ecommerce.sql" > /dev/null 2>&1
+PGPASSWORD=querymind_admin_password psql -h localhost -U querymind_admin -d querymind < "$SCRIPT_DIR/data/seed_ecommerce.sql" > /dev/null 2>&1
 print_success "E-commerce seed data loaded"
 
-PGPASSWORD=querymind_password psql -h localhost -U querymind_user -d querymind < "$SCRIPT_DIR/data/seed_saas_metrics.sql" > /dev/null 2>&1
+PGPASSWORD=querymind_admin_password psql -h localhost -U querymind_admin -d querymind < "$SCRIPT_DIR/data/seed_saas_metrics.sql" > /dev/null 2>&1
 print_success "SaaS metrics seed data loaded"
 
 echo ""
@@ -148,7 +148,9 @@ echo "2. Run the api:       cd api && uvicorn main:app --reload"
 echo "3. Run the agent:     python -m agent.graph.graph"
 echo "4. Run the frontend:  cd web && npm install && npm run dev"
 echo ""
-echo "PostgreSQL: localhost:5432 (user: querymind_user, password: querymind_password)"
+echo "PostgreSQL admin:    localhost:5432 (user: querymind_admin, password: querymind_admin_password)"
+echo "PostgreSQL app:      localhost:5432 (user: querymind_app, password: querymind_app_password)"
+echo "PostgreSQL readonly: localhost:5432 (user: querymind_readonly, password: querymind_readonly_password)"
 echo "Redis:     localhost:6379"
 echo ""
 echo "To deactivate the virtual environment, run: deactivate"

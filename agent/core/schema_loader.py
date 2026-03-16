@@ -139,6 +139,10 @@ class SchemaLoader:
         if self._schema_cache is None:
             self._schema_cache = self._introspect_schema()
         return self._schema_cache
+
+    def get_schema_dict(self) -> Dict[str, Any]:
+        """Return cached schema metadata as a dictionary."""
+        return self._get_cached_schema()
     
     def _format_column_type(self, col_type: str) -> str:
         """Format SQLAlchemy column type for LLM readability."""

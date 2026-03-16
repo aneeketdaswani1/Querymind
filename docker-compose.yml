@@ -7,16 +7,17 @@ services:
     container_name: querymind-postgres
     environment:
       POSTGRES_DB: querymind
-      POSTGRES_USER: querymind_user
-      POSTGRES_PASSWORD: querymind_password
+      POSTGRES_USER: querymind_admin
+      POSTGRES_PASSWORD: querymind_admin_password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./data/00_init_roles.sql:/docker-entrypoint-initdb.d/00_init_roles.sql
       - ./data/seed_ecommerce.sql:/docker-entrypoint-initdb.d/01_seed_ecommerce.sql
       - ./data/seed_saas_metrics.sql:/docker-entrypoint-initdb.d/02_seed_saas_metrics.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U querymind_user"]
+      test: ["CMD-SHELL", "pg_isready -U querymind_admin"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -44,7 +45,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://querymind_user:querymind_password@postgres:5432/querymind
+      AGENT_DATABASE_URL: postgresql://querymind_readonly:querymind_readonly_password@postgres:5432/querymind
+      APP_DATABASE_URL: postgresql://querymind_app:querymind_app_password@postgres:5432/querymind
+      DATABASE_URL: postgresql://querymind_app:querymind_app_password@postgres:5432/querymind
       REDIS_URL: redis://redis:6379
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       LOG_LEVEL: INFO

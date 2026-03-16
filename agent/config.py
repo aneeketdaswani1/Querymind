@@ -14,15 +14,25 @@ load_dotenv()
 # DATABASE CONFIGURATION
 # ============================================================================
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://querymind_user:querymind_password@localhost:5432/querymind"
+# Dedicated read-only connection for all agent-generated SQL execution.
+AGENT_DATABASE_URL = os.getenv(
+    "AGENT_DATABASE_URL",
+    os.getenv(
+        "DATABASE_URL",
+        "postgresql://querymind_readonly:querymind_readonly_password@localhost:5432/querymind",
+    ),
 )
 
-READONLY_USER = os.getenv(
-    "READONLY_USER",
-    "querymind_user"
+# Separate application connection (for non-agent tasks such as logging/auditing).
+APP_DATABASE_URL = os.getenv(
+    "APP_DATABASE_URL",
+    "postgresql://querymind_app:querymind_app_password@localhost:5432/querymind",
 )
+
+# Backward-compat alias; existing imports keep working.
+DATABASE_URL = AGENT_DATABASE_URL
+
+READONLY_USER = os.getenv("READONLY_USER", "querymind_readonly")
 
 # ============================================================================
 # LLM CONFIGURATION

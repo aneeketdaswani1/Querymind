@@ -12,7 +12,7 @@ import psycopg2
 from psycopg2.pool import SimpleConnectionPool
 from psycopg2.extras import RealDictCursor
 
-from agent.config import DATABASE_URL, QUERY_TIMEOUT_SECONDS, MAX_RESULT_ROWS
+from agent.config import AGENT_DATABASE_URL, QUERY_TIMEOUT_SECONDS, MAX_RESULT_ROWS
 
 logger = structlog.get_logger(__name__)
 
@@ -40,7 +40,7 @@ class QueryExecutor:
     - Execution timing
     """
     
-    def __init__(self, database_url: str = DATABASE_URL, pool_size: int = 5):
+    def __init__(self, database_url: str = AGENT_DATABASE_URL, pool_size: int = 5):
         """
         Initialize QueryExecutor with connection pool.
         
