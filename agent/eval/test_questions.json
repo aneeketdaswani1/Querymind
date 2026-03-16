@@ -1,0 +1,5 @@
+"""Test questions dataset for QueryMind evaluation.
+
+JSON file containing test questions, expected SQL queries, and validation data
+used for evaluating agent performance.
+"""
