@@ -49,7 +49,7 @@ services:
       APP_DATABASE_URL: postgresql://querymind_app:querymind_app_password@postgres:5432/querymind
       DATABASE_URL: postgresql://querymind_app:querymind_app_password@postgres:5432/querymind
       REDIS_URL: redis://redis:6379
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       LOG_LEVEL: INFO
     depends_on:
       postgres:

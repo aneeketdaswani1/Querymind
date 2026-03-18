@@ -1,7 +1,7 @@
 """SQL generator module for QueryMind.
 
 Handles the LLM-based SQL generation with structured output. Converts natural language
-questions into executable SQL queries using Claude language models with schema context
+questions into executable SQL queries using Gemini language models with schema context
 and few-shot examples. Supports multi-turn conversations and self-correction on errors.
 """
 
@@ -11,7 +11,7 @@ import re
 import structlog
 from pydantic import BaseModel, Field
 
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from agent.core.schema_loader import SchemaLoader
@@ -64,18 +64,18 @@ class ConversationMessage(BaseModel):
 
 class SQLGenerator:
     """
-    Generates SQL queries from natural language questions using Claude LLM.
+    Generates SQL queries from natural language questions using Gemini LLM.
     
     Uses structured output (Pydantic) to ensure valid JSON responses.
     Supports multi-turn conversations and self-correction on query errors.
     """
     
-    def __init__(self, llm_client: ChatAnthropic, schema_loader: SchemaLoader):
+    def __init__(self, llm_client: ChatGoogleGenerativeAI, schema_loader: SchemaLoader):
         """
         Initialize SQLGenerator.
         
         Args:
-            llm_client: Initialized ChatAnthropic client for Claude
+            llm_client: Initialized ChatGoogleGenerativeAI client for Gemini
             schema_loader: SchemaLoader instance for database schema info
         """
         self.llm = llm_client

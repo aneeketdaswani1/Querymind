@@ -6,7 +6,7 @@ QueryMind is an AI Data Analyst Agent that converts natural language questions i
 
 ## Features
 
-- **Natural Language to SQL**: Converts user questions into executable SQL queries using Claude LLM
+- **Natural Language to SQL**: Converts user questions into executable SQL queries using Gemini Flash
 - **Safety First**: All generated queries validated through a safety checker to prevent dangerous operations
 - **Interactive Visualizations**: Automatically recommends and generates appropriate charts for query results
 - **Intelligent Insights**: Provides natural language summaries and analysis of query results
@@ -20,7 +20,7 @@ QueryMind is an AI Data Analyst Agent that converts natural language questions i
 - **LangGraph**: Agentic workflow orchestration
 - **LangChain**: LLM integration framework
 - **Pydantic v2**: Data validation and schemas
-- **Anthropic Claude**: Language model via langchain-anthropic
+- **Google Gemini Flash**: Language model via langchain-google-genai
 - **structlog**: Structured logging
 
 ### API
@@ -58,7 +58,8 @@ querymind/
 │   │   └── few_shot.py
 │   ├── eval/             # Evaluation utilities
 │   │   ├── evaluate.py
-│   │   └── test_questions.json
+│   │   ├── test_questions.json
+│   │   └── adversarial_questions.json
 │   ├── config.py         # Configuration
 │   └── requirements.txt   # Python dependencies
 │
@@ -93,7 +94,7 @@ querymind/
 - Node.js 18+ (for frontend)
 - Docker & Docker Compose
 - PostgreSQL 16
-- Anthropic API key
+- Google AI Studio API key
 
 ### Environment Setup
 
@@ -111,7 +112,7 @@ AGENT_DATABASE_URL=postgresql://querymind_readonly:querymind_readonly_password@l
 APP_DATABASE_URL=postgresql://querymind_app:querymind_app_password@localhost:5432/querymind
 # Backward-compatible alias
 DATABASE_URL=postgresql://querymind_app:querymind_app_password@localhost:5432/querymind
-ANTHROPIC_API_KEY=your-anthropic-key
+GOOGLE_API_KEY=your-google-api-key
 REDIS_URL=redis://localhost:6379
 ```
 
@@ -188,7 +189,7 @@ Key settings:
 - `AGENT_DATABASE_URL`: PostgreSQL connection used for agent SQL execution (read-only user)
 - `APP_DATABASE_URL`: Separate PostgreSQL connection for non-agent application concerns
 - `DATABASE_URL`: Backward-compatible alias to `AGENT_DATABASE_URL`
-- `ANTHROPIC_API_KEY`: Claude API key
+- `GOOGLE_API_KEY`: Gemini API key
 - `REDIS_URL`: Redis connection for conversation state
 - `LOG_LEVEL`: structlog level (INFO, DEBUG, etc.)
 
@@ -216,9 +217,17 @@ pytest
 
 ### Agent Evaluation
 ```bash
-cd agent
-python eval/evaluate.py
+python -m agent.eval.evaluate --database ecommerce --output agent/eval/results.json
 ```
+
+Evaluation outputs:
+- `agent/eval/results.json`: machine-readable metrics and per-case outcomes
+- `agent/eval/results.md`: markdown summary report with score table, pass/fail matrix, SQL examples, and error analysis
+
+For portfolio documentation:
+1. Run the evaluation command above after configuring a valid Gemini quota-enabled API key.
+2. Open `agent/eval/results.md` and capture a screenshot of the pass/fail table.
+3. Add the screenshot image to this README under an "Evaluation Results" section.
 
 ## Development
 

@@ -20,9 +20,9 @@ from agent.core.safety_checker import SafetyChecker
 from agent.core.query_executor import QueryExecutor
 from agent.core.viz_recommender import VizRecommender
 from agent.core.insight_narrator import InsightNarrator
-from agent.config import AGENT_DATABASE_URL, ANTHROPIC_API_KEY, LLM_MODEL
+from agent.config import AGENT_DATABASE_URL, GOOGLE_API_KEY, LLM_MODEL
 
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 logger = structlog.get_logger(__name__)
 
@@ -45,8 +45,8 @@ def _initialize_components():
     logger.info("initializing_graph_components")
     
     # Initialize LLM client
-    llm = ChatAnthropic(
-        api_key=ANTHROPIC_API_KEY,
+    llm = ChatGoogleGenerativeAI(
+        google_api_key=GOOGLE_API_KEY,
         model=LLM_MODEL,
         temperature=0.7
     )

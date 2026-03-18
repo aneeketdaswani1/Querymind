@@ -17,6 +17,7 @@ from api.routers.feedback import router as feedback_router
 from api.routers.health import router as health_router
 from api.routers.query import router as query_router
 from api.routers.schema import router as schema_router
+from api.routers.upload import router as upload_router
 from api.services.conversation import ConversationService
 
 logger = structlog.get_logger(__name__)
@@ -33,7 +34,7 @@ app.add_middleware(
 	CORSMiddleware,
 	allow_origins=FRONTEND_ORIGINS,
 	allow_credentials=True,
-	allow_methods=["GET", "POST", "OPTIONS"],
+	allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 	allow_headers=["*"],
 )
 
@@ -83,5 +84,6 @@ async def on_shutdown() -> None:
 
 app.include_router(query_router)
 app.include_router(schema_router)
+app.include_router(upload_router)
 app.include_router(feedback_router)
 app.include_router(health_router)

@@ -38,9 +38,9 @@ READONLY_USER = os.getenv("READONLY_USER", "querymind_readonly")
 # LLM CONFIGURATION
 # ============================================================================
 
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-LLM_MODEL = os.getenv("LLM_MODEL", "claude-3-5-sonnet-20241022")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.0-flash")
 
 LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.7"))
 

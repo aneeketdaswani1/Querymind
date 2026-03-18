@@ -100,3 +100,11 @@ class HealthResponse(BaseModel):
     llm: str
     database: str
     schema_loaded: bool
+
+
+class CsvUploadResponse(BaseModel):
+    file_name: str
+    row_count: int
+    column_count: int
+    columns: List[str] = Field(default_factory=list)
+    preview_rows: List[Dict[str, str]] = Field(default_factory=list)

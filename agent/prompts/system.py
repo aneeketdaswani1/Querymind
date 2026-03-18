@@ -1,6 +1,6 @@
 """System prompts for QueryMind agent.
 
-Defines the system prompts used to configure the Claude LLM for SQL generation,
+Defines the system prompts used to configure the LLM for SQL generation,
 query validation, and insight generation tasks. These templates are used to guide
 the LLM behavior for different stages of the data analysis workflow.
 """

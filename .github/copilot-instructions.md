@@ -10,7 +10,7 @@ and explains insights.
 - API: FastAPI, SQLAlchemy, psycopg2, Redis
 - Frontend: Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts
 - Database: PostgreSQL 16
-- LLM: Anthropic Claude (via langchain-anthropic)
+- LLM: Google Gemini Flash (via langchain-google-genai)
 
 ## Code Conventions
 - Python: Use type hints everywhere, async/await for IO operations

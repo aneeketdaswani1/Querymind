@@ -7,6 +7,7 @@ for each user query using Redis for state persistence.
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -17,7 +18,7 @@ import structlog
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
-from agent.config import AGENT_DATABASE_URL, ANTHROPIC_API_KEY, REDIS_URL
+from agent.config import AGENT_DATABASE_URL, GOOGLE_API_KEY, REDIS_URL
 from agent.core.input_sanitizer import sanitize_user_input
 from agent.core.schema_loader import SchemaLoader
 from agent.graph.graph import build_agent_graph
@@ -48,6 +49,103 @@ DATABASE_TABLES: Dict[str, List[str]] = {
 }
 
 
+class ConversationManager:
+	"""Manages multi-turn conversations for follow-up analytical queries.
+
+	Features:
+	- Stores conversation entries in Redis with TTL
+	- Keeps max 20 exchanges (40 role-based entries)
+	- Builds last 5 exchanges for context injection
+	- Resolves references like "that", "those", "this", "the same"
+	"""
+
+	_REFERENCE_PATTERN = r"\b(that|those|this|the same|same one|same query)\b"
+
+	def __init__(self, redis_client: redis.Redis, ttl_seconds: int = 3600, max_exchanges: int = 20) -> None:
+		self._redis = redis_client
+		self.ttl_seconds = ttl_seconds
+		self.max_exchanges = max_exchanges
+
+	def _history_key(self, conversation_id: str) -> str:
+		return f"conversation:{conversation_id}:messages"
+
+	async def add_entry(
+		self,
+		conversation_id: str,
+		role: str,
+		content: str,
+		sql: Optional[str] = None,
+	) -> None:
+		"""Store a role-based message entry in Redis with TTL and trimming."""
+		entry = {
+			"role": role,
+			"content": content,
+			"sql": sql,
+			"timestamp": datetime.now(timezone.utc).isoformat(),
+		}
+
+		key = self._history_key(conversation_id)
+		max_entries = self.max_exchanges * 2
+		pipe = self._redis.pipeline()
+		pipe.rpush(key, json.dumps(entry))
+		pipe.ltrim(key, -max_entries, -1)
+		pipe.expire(key, self.ttl_seconds)
+		await pipe.execute()
+
+	async def get_entries(self, conversation_id: str) -> List[Dict[str, Any]]:
+		"""Load all stored conversation entries for a conversation id."""
+		key = self._history_key(conversation_id)
+		raw = await self._redis.lrange(key, 0, -1)
+		entries: List[Dict[str, Any]] = []
+		for item in raw:
+			try:
+				entries.append(json.loads(item))
+			except json.JSONDecodeError:
+				continue
+		return entries
+
+	async def get_last_context_messages(
+		self,
+		conversation_id: str,
+		last_exchanges: int = 5,
+	) -> List[Dict[str, str]]:
+		"""Return context messages from the last N exchanges (2 messages each)."""
+		entries = await self.get_entries(conversation_id)
+		window = entries[-(last_exchanges * 2):]
+		return [
+			{"role": str(e.get("role", "user")), "content": str(e.get("content", ""))}
+			for e in window
+			if e.get("content")
+		]
+
+	def resolve_references(self, question: str, entries: List[Dict[str, Any]]) -> str:
+		"""Resolve pronoun references to previous analytical context."""
+		if not entries:
+			return question
+
+		if not question or not re.search(self._REFERENCE_PATTERN, question, flags=re.IGNORECASE):
+			return question
+
+		# Prefer last assistant answer with SQL context, then fallback to summary text.
+		anchor = ""
+		for entry in reversed(entries):
+			if entry.get("role") != "assistant":
+				continue
+			sql_text = (entry.get("sql") or "").strip()
+			content_text = (entry.get("content") or "").strip()
+			if sql_text:
+				anchor = f"Previous query SQL context: {sql_text}"
+				break
+			if content_text:
+				anchor = f"Previous result context: {content_text}"
+				break
+
+		if not anchor:
+			return question
+
+		return f"{question}\n\nContext from previous exchange:\n{anchor}"
+
+
 class ConversationService:
 	"""Orchestrates query execution and conversation persistence."""
 
@@ -59,11 +157,17 @@ class ConversationService:
 		self._db_engine = create_engine(AGENT_DATABASE_URL, pool_pre_ping=True)
 		self.ttl_seconds = 3600
 		self.query_rate_limit = 20
+		self._conversation_manager: Optional[ConversationManager] = None
 
 	async def startup(self) -> None:
 		"""Initialize service connections."""
 		self._redis = redis.from_url(self.redis_url, decode_responses=True)
 		await self._redis.ping()
+		self._conversation_manager = ConversationManager(
+			redis_client=self._redis,
+			ttl_seconds=self.ttl_seconds,
+			max_exchanges=20,
+		)
 		logger.info("conversation_service_started")
 
 	async def shutdown(self) -> None:
@@ -110,10 +214,19 @@ class ConversationService:
 			return response
 
 		prior_history = await self.get_history(conversation_id)
-		messages = self._history_to_messages(prior_history.items)
+		messages = await self._conversation_manager.get_last_context_messages(
+			conversation_id,
+			last_exchanges=5,
+		) if self._conversation_manager else self._history_to_messages(prior_history.items)
+
+		prior_entries = await self._conversation_manager.get_entries(conversation_id) if self._conversation_manager else []
+		resolved_question = self._conversation_manager.resolve_references(
+			sanitized.cleaned_question,
+			prior_entries,
+		) if self._conversation_manager else sanitized.cleaned_question
 
 		state = create_initial_state(
-			question=sanitized.cleaned_question,
+			question=resolved_question,
 			active_database=request.database.value,
 			messages=messages,
 		)
@@ -143,7 +256,7 @@ class ConversationService:
 				summary=final_state.insight_text or "",
 				key_findings=final_state.key_findings or [],
 				suggested_follow_ups=self._suggest_follow_ups(
-					sanitized.cleaned_question,
+					resolved_question,
 					request.database,
 				),
 			),
@@ -152,6 +265,20 @@ class ConversationService:
 		)
 
 		await self._append_history(conversation_id, request.question, response)
+		if self._conversation_manager:
+			await self._conversation_manager.add_entry(
+				conversation_id=conversation_id,
+				role="user",
+				content=request.question,
+				sql=None,
+			)
+			assistant_content = response.insight.summary or response.sql_explanation or (response.clarification_question or "")
+			await self._conversation_manager.add_entry(
+				conversation_id=conversation_id,
+				role="assistant",
+				content=assistant_content,
+				sql=response.sql,
+			)
 		return response
 
 	async def get_schema(self, database: DatabaseName) -> SchemaResponse:
@@ -215,7 +342,7 @@ class ConversationService:
 
 	async def health(self) -> HealthResponse:
 		"""Check connectivity for LLM key, DB, and schema cache availability."""
-		llm_status = "connected" if ANTHROPIC_API_KEY else "disconnected"
+		llm_status = "connected" if GOOGLE_API_KEY else "disconnected"
 
 		db_status = "disconnected"
 		try:

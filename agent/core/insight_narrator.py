@@ -6,7 +6,7 @@ natural language generation to help users understand data patterns and trends.
 
 from typing import List, Dict, Any, Tuple
 import structlog
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 logger = structlog.get_logger(__name__)
@@ -31,7 +31,7 @@ RECOMMENDED ACTION: [specific action based on data]
 
 class InsightNarrator:
     """
-    Generates human-readable insights from query results using Claude LLM.
+    Generates human-readable insights from query results using Gemini LLM.
     
     Features:
     - Summarizes query results in natural language
@@ -40,12 +40,12 @@ class InsightNarrator:
     - Provides actionable recommendations
     """
     
-    def __init__(self, llm_client: ChatAnthropic):
+    def __init__(self, llm_client: ChatGoogleGenerativeAI):
         """
         Initialize InsightNarrator.
         
         Args:
-            llm_client: Initialized ChatAnthropic client for Claude
+            llm_client: Initialized ChatGoogleGenerativeAI client for Gemini
         """
         self.llm = llm_client
         logger.debug("insight_narrator_initialized")
